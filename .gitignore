@@ -1,0 +1,9 @@
+.DS_Store
+.nyc_output
+.vscode
+
+tmp
+coverage
+node_modules
+npm-debug.log
+build
