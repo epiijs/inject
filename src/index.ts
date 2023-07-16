@@ -4,7 +4,8 @@ interface IServiceOptions {
 }
 
 interface IServiceWrapper extends IServiceOptions {
-  instance: any;
+  provider: unknown;
+  instance: unknown;
 }
 
 export interface IServiceHandler {
@@ -13,9 +14,9 @@ export interface IServiceHandler {
 
 export interface IInjector {
   inherit: (base: IInjector) => void;
-  provide: (name: string, service: any, options?: IServiceOptions) => void;
+  provide: (name: string, provider: any, options?: IServiceOptions) => void;
   service: (name: string) => unknown;
-  handler: () => IServiceHandler;
+  dispose: () => void;
 }
 
 export class Injector implements IInjector {
@@ -23,24 +24,23 @@ export class Injector implements IInjector {
     [key in string]: IServiceWrapper;
   };
   private baseInjector?: IInjector;
-  private serviceProxy?: IServiceHandler;
 
   constructor() {
     this.services = {};
     this.baseInjector = undefined;
-    this.serviceProxy = undefined;
   }
 
   inherit(injector: IInjector): void {
     this.baseInjector = injector;
   }
 
-  provide(name: string, service: any, options: IServiceOptions = {}): void {
-    if (!name || !service) { return; }
+  provide(name: string, provider: any, options: IServiceOptions = {}): void {
+    if (!name || !provider) { return; }
     const wrapper = this.services[name];
     if (wrapper && !wrapper.writable) { return; }
     this.services[name] = {
-      instance: service,
+      provider,
+      instance: null,
       writable: options.writable != null ? options.writable : true,
       callable: options.callable != null ? options.callable : true,
     };
@@ -50,8 +50,12 @@ export class Injector implements IInjector {
     // 1. find service directly
     if (name in this.services) {
       const wrapper = this.services[name];
-      if (wrapper.callable && typeof wrapper.instance === 'function') {
-        return wrapper.instance(this.handler);
+      if (!wrapper.instance) {
+        if (wrapper.callable && typeof wrapper.provider === 'function') {
+          wrapper.instance = wrapper.provider(this);
+        } else {
+          wrapper.instance = wrapper.provider;
+        }
       }
       return wrapper.instance;
     }
@@ -65,22 +69,20 @@ export class Injector implements IInjector {
     return null;
   }
 
-  handler(): IServiceHandler {
-    if (!this.serviceProxy) {
-      this.serviceProxy = new Proxy({}, {
-        get: (target, property) => {
-          if (typeof property === 'string') {
-            return this.service(property);
-          }
-        },
-      });
-    }
-    return this.serviceProxy;
-  }
-
   dispose() {
+    Object.values(this.services).forEach((wrapper) => {
+      const { instance } = wrapper;
+      if (!instance) { return; }
+      // TODO: support Symbol.dispose while ECMA updated
+      const disposeFn = (instance as any).dispose;
+      if (typeof disposeFn === 'function') {
+        try {
+          disposeFn();
+        } catch {
+        }
+      }
+    });
     this.services = {};
     this.baseInjector = undefined;
-    this.serviceProxy = undefined;
   }
 }

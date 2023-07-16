@@ -63,6 +63,39 @@ describe('injector', () => {
     assert.deepEqual(instance3, testValue);
   });
 
+  it('provide callable service with injector args', () => {
+    const injector = new Injector();
+    const testValue = '1';
+    const serviceFn1 = () => testValue;
+    const serviceFnX = (injector) => {
+      const instance = injector.service('s1');
+      return instance;
+    };
+    injector.provide('s1', serviceFn1, { callable: true });
+    injector.provide('sX', serviceFnX, { callable: true });
+    const instance1 = injector.service('s1');
+    const instanceX = injector.service('sX');
+    assert.deepEqual(instance1, testValue);
+    assert.deepEqual(instanceX, testValue);
+  });
+
+  it('provide disposable service', () => {
+    const injector = new Injector();
+    const disposed = { result: false };
+    const service1 = {
+      dispose: () => {
+        console.log('dispose');
+        disposed.result = true;
+      }
+    };
+    injector.provide('s1', service1);
+    injector.service('s1');
+    injector.dispose();
+    const instance1 = injector.service('s1');
+    assert.deepEqual(instance1, null);
+    assert.deepEqual(disposed.result, true);
+  });
+
   it('inherit injector', () => {
     const injector1 = new Injector();
     const injector2 = new Injector();
@@ -73,16 +106,5 @@ describe('injector', () => {
     const instance2 = injector2.service('s1');
     assert.deepEqual(instance1, testValue);
     assert.deepEqual(instance2, testValue);
-  });
-
-  it('injector handler', () => {
-    const injector = new Injector();
-    const testValue = '1';
-    injector.provide('s1', testValue);
-    const handler = injector.handler();
-    const instance1 = handler.s1;
-    const instance2 = handler.s2;
-    assert.deepEqual(instance1, testValue);
-    assert.deepEqual(instance2, null);
   });
 });
