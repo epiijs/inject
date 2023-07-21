@@ -1,6 +1,13 @@
-interface IServiceOptions {
+export interface IServiceOptions {
   writable?: boolean;
   callable?: boolean;
+}
+
+export interface IInjector {
+  inherit: (base?: IInjector) => IInjector | undefined;
+  provide: (name: string, provider: any, options?: IServiceOptions) => void;
+  service: <TService = unknown, TOptions = unknown>(name: string, options?: TOptions) => TService | undefined;
+  dispose: () => void;
 }
 
 interface IServiceWrapper extends IServiceOptions {
@@ -8,30 +15,29 @@ interface IServiceWrapper extends IServiceOptions {
   instance: unknown;
 }
 
-export interface IServiceHandler {
-  [key: string]: unknown;
-}
-
-export interface IInjector {
-  inherit: (base: IInjector) => void;
-  provide: (name: string, provider: any, options?: IServiceOptions) => void;
-  service: (name: string) => unknown;
-  dispose: () => void;
-}
-
 export class Injector implements IInjector {
   private services: {
     [key in string]: IServiceWrapper;
   };
-  private baseInjector?: IInjector;
+  private ancestor?: IInjector;
 
   constructor() {
     this.services = {};
-    this.baseInjector = undefined;
+    this.ancestor = undefined;
   }
 
-  inherit(injector: IInjector): void {
-    this.baseInjector = injector;
+  inherit(injector?: IInjector): IInjector | undefined {
+    let ancestor = injector;
+    while (ancestor) {
+      if (ancestor === this) {
+        throw new Error('circular dependency');
+      }
+      ancestor = ancestor.inherit();
+    }
+    if (injector) {
+      this.ancestor = injector;
+    }
+    return this.ancestor;
   }
 
   provide(name: string, provider: any, options: IServiceOptions = {}): void {
@@ -41,32 +47,32 @@ export class Injector implements IInjector {
     this.services[name] = {
       provider,
       instance: null,
-      writable: options.writable != null ? options.writable : true,
-      callable: options.callable != null ? options.callable : true,
+      writable: options.writable ?? false,
+      callable: options.callable ?? true,
     };
   }
 
-  service(name: string): unknown {
+  service<TService = unknown, TOptions = unknown>(name: string, options?: TOptions): TService | undefined {
     // 1. find service directly
     if (name in this.services) {
       const wrapper = this.services[name];
       if (!wrapper.instance) {
         if (wrapper.callable && typeof wrapper.provider === 'function') {
-          wrapper.instance = wrapper.provider(this);
+          wrapper.instance = wrapper.provider(this, options);
         } else {
           wrapper.instance = wrapper.provider;
         }
       }
-      return wrapper.instance;
+      return wrapper.instance as TService | undefined;
     }
 
-    // 2. find service from inherit injector
-    if (this.baseInjector) {
-      return this.baseInjector.service(name);
+    // 2. find service from ancestor injector
+    if (this.ancestor) {
+      return this.ancestor.service(name, options);
     }
 
     // 3. service not found
-    return null;
+    return undefined;
   }
 
   dispose() {
@@ -83,6 +89,6 @@ export class Injector implements IInjector {
       }
     });
     this.services = {};
-    this.baseInjector = undefined;
+    this.ancestor = undefined;
   }
 }

@@ -45,7 +45,7 @@ describe('injector', () => {
     const instance3 = injector.service('s3');
     assert.deepEqual(instance1, newValue);
     assert.deepEqual(instance2, oldValue);
-    assert.deepEqual(instance3, newValue);
+    assert.deepEqual(instance3, oldValue);
   });
 
   it('provide callable service', () => {
@@ -65,26 +65,33 @@ describe('injector', () => {
 
   it('provide callable service with injector args', () => {
     const injector = new Injector();
-    const testValue = '1';
-    const serviceFn1 = () => testValue;
-    const serviceFnX = (injector) => {
+    const testValue1 = '1';
+    const testValue2 = '2';
+    const serviceFn1 = () => testValue1;
+    const serviceFn2 = (injector) => {
       const instance = injector.service('s1');
       return instance;
     };
-    injector.provide('s1', serviceFn1, { callable: true });
-    injector.provide('sX', serviceFnX, { callable: true });
+    const serviceFn3 = (injector, options) => {
+      return options.value;
+    };
+    injector.provide('s1', serviceFn1);
+    injector.provide('s2', serviceFn2);
+    injector.provide('s3', serviceFn3);
     const instance1 = injector.service('s1');
-    const instanceX = injector.service('sX');
-    assert.deepEqual(instance1, testValue);
-    assert.deepEqual(instanceX, testValue);
+    const instance2 = injector.service('s2');
+    const instance3 = injector.service('s3', { value: testValue2 });
+    // TODO: support and test cachable = false
+    assert.deepEqual(instance1, testValue1);
+    assert.deepEqual(instance2, testValue1);
+    assert.deepEqual(instance3, testValue2);
   });
 
-  it('provide disposable service', () => {
+  it('dispose service', () => {
     const injector = new Injector();
     const disposed = { result: false };
     const service1 = {
       dispose: () => {
-        console.log('dispose');
         disposed.result = true;
       }
     };
@@ -106,5 +113,17 @@ describe('injector', () => {
     const instance2 = injector2.service('s1');
     assert.deepEqual(instance1, testValue);
     assert.deepEqual(instance2, testValue);
+  });
+
+  it('inherit circular injector', () => {
+    const injector1 = new Injector();
+    const injector2 = new Injector();
+    assert.throws(() => {
+      injector1.inherit(injector1);
+    })
+    assert.throws(() => {
+      injector1.inherit(injector2);
+      injector2.inherit(injector1);
+    })
   });
 });
