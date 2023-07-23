@@ -53,10 +53,8 @@ export function createUserService(): IUserService {
 }
 
 injector.provide('UserService', userService);
+// injector.dispose('UserService');
 injector.provide('UserService', createUserService);
-
-// default service options
-injector.provide('UserService', createUserService, { writable: false, callable: true });
 ```
 
 ## injector.inherit
@@ -76,16 +74,28 @@ const service = injector.service('UserService');
 ## injector.service
 
 `injector.service` will find and create and return service instance.
-Also you can specify options for service factory function.
+You can specify options for service provider function.
 
 ```typescript
 const service = injector.service('UserService');
 const service = injector.service('UserService', { region: 'earth' });
 ```
 
+Also you can get injector and call `injector.service` in service provider function.
+
+```typescript
+import { SymbolInjector } from '@epiijs/inject';
+
+injector.provide('PlanService', (options) => {
+  const injector = options[SymbolInjector];
+  const userService = injector.service('UserService');
+  return {};
+});
+```
+
 ## injector.dispose
 
-`injector.dispose` will dispose all instances and clear all providers.
+`injector.dispose` will dispose specified service or all instances and clear all providers.
 
 ```typescript
 export const userService: IUserService = {
@@ -95,6 +105,8 @@ export const userService: IUserService = {
 };
 
 injector.provide('UserService', userService);
+
+injector.dispose('UserService');
 injector.dispose();
 
 // console output: disposed

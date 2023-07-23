@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { Injector } = require('../build');
+const { Injector, SymbolInjector } = require('../build');
 
 describe('injector', () => {
   it('new and dispose injector', () => {
@@ -30,61 +30,56 @@ describe('injector', () => {
     assert.deepEqual(instance, service1);
   });
 
-  it('provide writable service', () => {
+  it('provide more than once', () => {
     const injector = new Injector();
     const oldValue = '1';
     const newValue = '2';
-    injector.provide('s1', oldValue, { writable: true });
-    injector.provide('s2', oldValue, { writable: false });
-    injector.provide('s3', oldValue);
+    injector.provide('s1', oldValue);
+    injector.provide('s2', oldValue);
     injector.provide('s1', newValue);
+    injector.dispose('s2');
     injector.provide('s2', newValue);
-    injector.provide('s3', newValue);
     const instance1 = injector.service('s1');
     const instance2 = injector.service('s2');
-    const instance3 = injector.service('s3');
-    assert.deepEqual(instance1, newValue);
-    assert.deepEqual(instance2, oldValue);
-    assert.deepEqual(instance3, oldValue);
+    assert.deepEqual(instance1, oldValue);
+    assert.deepEqual(instance2, newValue);
   });
 
   it('provide callable service', () => {
     const injector = new Injector();
-    const testValue = '1';
-    const serviceFn = () => testValue;
-    injector.provide('s1', serviceFn, { callable: true });
-    injector.provide('s2', serviceFn, { callable: false });
-    injector.provide('s3', serviceFn);
+    const testValue1 = '1';
+    const testValue2 = '2';
+    const serviceFn = (options) => options?.value || testValue1;
+    injector.provide('s1', serviceFn);
+    injector.provide('s2', serviceFn);
     const instance1 = injector.service('s1');
-    const instance2 = injector.service('s2');
-    const instance3 = injector.service('s3');
-    assert.deepEqual(instance1, testValue);
-    assert.deepEqual(instance2, serviceFn);
-    assert.deepEqual(instance3, testValue);
+    const instance2 = injector.service('s2', { value: testValue2 });
+    assert.deepEqual(instance1, testValue1);
+    assert.deepEqual(instance2, testValue2);
   });
 
   it('provide callable service with injector args', () => {
     const injector = new Injector();
     const testValue1 = '1';
     const testValue2 = '2';
-    const serviceFn1 = () => testValue1;
-    const serviceFn2 = (injector) => {
-      const instance = injector.service('s1');
+    const serviceFn0 = () => testValue1;
+    const serviceFn1 = (options) => {
+      const injector = options[SymbolInjector];
+      const instance = injector.service('s0');
       return instance;
     };
-    const serviceFn3 = (injector, options) => {
-      return options.value;
+    const serviceFn2 = (options) => {
+      const injector = options[SymbolInjector];
+      const instance = injector.service('s1');
+      return [instance, options.value];
     };
+    injector.provide('s0', serviceFn0);
     injector.provide('s1', serviceFn1);
     injector.provide('s2', serviceFn2);
-    injector.provide('s3', serviceFn3);
     const instance1 = injector.service('s1');
-    const instance2 = injector.service('s2');
-    const instance3 = injector.service('s3', { value: testValue2 });
-    // TODO: support and test cachable = false
+    const instance2 = injector.service('s2', { value: testValue2 });
     assert.deepEqual(instance1, testValue1);
-    assert.deepEqual(instance2, testValue1);
-    assert.deepEqual(instance3, testValue2);
+    assert.deepStrictEqual(instance2, [testValue1, testValue2]);
   });
 
   it('dispose service', () => {

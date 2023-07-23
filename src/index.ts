@@ -1,18 +1,32 @@
-export interface IServiceOptions {
-  writable?: boolean;
-  callable?: boolean;
-}
+export const SymbolInjector = Symbol('Injector');
+
+export type ProviderFn = (options: {
+  [key: string]: unknown;
+  [SymbolInjector]: IInjector;
+}) => unknown;
 
 export interface IInjector {
-  inherit: (base?: IInjector) => IInjector | undefined;
-  provide: (name: string, provider: any, options?: IServiceOptions) => void;
-  service: <TService = unknown, TOptions = unknown>(name: string, options?: TOptions) => TService | undefined;
-  dispose: () => void;
+  inherit: (injector?: IInjector) => IInjector | undefined;
+  provide: (name: string, provider: ProviderFn | unknown) => void;
+  service: <S = unknown, P = unknown>(name: string, options?: P) => S | undefined;
+  dispose: (name?: string) => void;
 }
 
-interface IServiceWrapper extends IServiceOptions {
+interface IServiceWrapper {
   provider: unknown;
   instance: unknown;
+}
+
+function disposeInstance(instance: unknown) {
+  if (!instance) { return; }
+  // TODO: support Symbol.dispose while ECMA updated
+  const disposeFn = (instance as any).dispose;
+  if (typeof disposeFn === 'function') {
+    try {
+      disposeFn();
+    } catch {
+    }
+  }
 }
 
 export class Injector implements IInjector {
@@ -40,30 +54,30 @@ export class Injector implements IInjector {
     return this.ancestor;
   }
 
-  provide(name: string, provider: any, options: IServiceOptions = {}): void {
+  provide(name: string, provider: ProviderFn | unknown): void {
     if (!name || !provider) { return; }
-    const wrapper = this.services[name];
-    if (wrapper && !wrapper.writable) { return; }
+    if (name in this.services) { return; }
     this.services[name] = {
       provider,
-      instance: null,
-      writable: options.writable ?? false,
-      callable: options.callable ?? true,
+      instance: null
     };
   }
 
-  service<TService = unknown, TOptions = unknown>(name: string, options?: TOptions): TService | undefined {
+  service<S = unknown, P = unknown>(name: string, options?: P): S | undefined {
     // 1. find service directly
     if (name in this.services) {
       const wrapper = this.services[name];
       if (!wrapper.instance) {
-        if (wrapper.callable && typeof wrapper.provider === 'function') {
-          wrapper.instance = wrapper.provider(this, options);
+        if (typeof wrapper.provider === 'function') {
+          wrapper.instance = (wrapper.provider as ProviderFn)({
+            ...options,
+            [SymbolInjector]: this
+          });
         } else {
           wrapper.instance = wrapper.provider;
         }
       }
-      return wrapper.instance as TService | undefined;
+      return wrapper.instance as S | undefined;
     }
 
     // 2. find service from ancestor injector
@@ -75,20 +89,17 @@ export class Injector implements IInjector {
     return undefined;
   }
 
-  dispose() {
-    Object.values(this.services).forEach((wrapper) => {
-      const { instance } = wrapper;
-      if (!instance) { return; }
-      // TODO: support Symbol.dispose while ECMA updated
-      const disposeFn = (instance as any).dispose;
-      if (typeof disposeFn === 'function') {
-        try {
-          disposeFn();
-        } catch {
-        }
-      }
-    });
-    this.services = {};
-    this.ancestor = undefined;
+  dispose(name?: string): void {
+    if (name) {
+      const wrapper = this.services[name];
+      disposeInstance(wrapper.instance);
+      delete this.services[name];
+    } else {
+      Object.values(this.services).forEach((wrapper) => {
+        disposeInstance(wrapper.instance);      
+      });
+      this.services = {};
+      this.ancestor = undefined;
+    }
   }
 }
