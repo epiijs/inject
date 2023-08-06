@@ -13,17 +13,19 @@ npm i @epiijs/inject --save
 ```typescript
 import { createInjector } from '@epiijs/inject';
 
-function createUserService() {
+const injector = createInjector();
+
+injector.provide('UserService', () => {
   return {
+    connect: () => {},
     dispose: () => {}
   };
-}
-
-const injector = createInjector();
-injector.provide('UserService', createUserService);
+});
 
 const service = injector.service('UserService');
-service.dispose();
+service.connect();
+
+injector.dispose();
 ```
 
 # API
@@ -38,7 +40,7 @@ const injector = createInjector();
 
 ## injector.provide
 
-`injector.provide` can accept any value as service or function as service factory.
+`injector.provide` can accept any service values or service factory functions.
 
 ```typescript
 export interface IUserService {}
@@ -59,13 +61,13 @@ injector.provide('UserService', createUserService);
 
 ## injector.inherit
 
-`injector.inherit` will try to find services from inherited injector if nothing found from self.
+`injector.inherit` can be attached with another injector. Current injector will try to find services from inherited injector if nothing found from itself.
 
 ```typescript
-export const userService: IUserService = {};
-
+const injector = createInjector();
 const anotherInjector = createInjector();
-anotherInjector.provide('UserService', userService);
+anotherInjector.provide('UserService', {});
+
 injector.inherit(anotherInjector);
 
 const service = injector.service('UserService');
@@ -73,15 +75,15 @@ const service = injector.service('UserService');
 
 ## injector.service
 
-`injector.service` will find and create and return service instance.
-You can specify options for service provider function.
+`injector.service` can find service by name, create service instance and return it.
+You can specify options for service factory function.
 
 ```typescript
 const service = injector.service('UserService');
 const service = injector.service('UserService', { region: 'earth' });
 ```
 
-Also you can get injector and call `injector.service` in service provider function.
+Also you can get injector and call `injector.service` in service factory function.
 
 ```typescript
 import { Symbols } from '@epiijs/inject';
@@ -89,13 +91,13 @@ import { Symbols } from '@epiijs/inject';
 injector.provide('PlanService', (options) => {
   const injector = options[Symbols.injector];
   const userService = injector.service('UserService');
-  return {};
+  return { user: userService, plan: undefined };
 });
 ```
 
 ## injector.dispose
 
-`injector.dispose` will dispose specified service or all instances and clear all providers.
+`injector.dispose` will dispose specified service by name or all instances and clear all providers.
 
 ```typescript
 import { Symbols } from '@epiijs/inject';
