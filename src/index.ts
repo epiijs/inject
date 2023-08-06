@@ -1,4 +1,19 @@
-export const SymbolInjector = Symbol('Injector');
+const SymbolInjector = Symbol('injector');
+const SymbolDisposer = Symbol('disposer');
+
+export const Symbols = new Proxy({}, {
+  get: (target, key) => {
+    if (key === 'injector') {
+      return SymbolInjector;
+    }
+    if (key === 'disposer') {
+      return SymbolDisposer;
+    }
+  }
+}) as {
+  readonly injector: symbol;
+  readonly disposer: symbol;
+};
 
 export type ProviderFn = (options: {
   [key: string]: unknown;
@@ -20,58 +35,57 @@ interface IServiceWrapper {
 function disposeInstance(instance: unknown) {
   if (!instance) { return; }
   // TODO: support Symbol.dispose while ECMA updated
-  const disposeFn = (instance as any).dispose;
+  const disposeFn =
+    (instance as any)[SymbolDisposer] ||
+    (instance as any).dispose;
   if (typeof disposeFn === 'function') {
-    try {
-      disposeFn();
-    } catch {
-    }
+    try { disposeFn(); } catch {}
   }
 }
 
-export class Injector implements IInjector {
-  private services: {
-    [key in string]: IServiceWrapper;
+export function createInjector(): IInjector {
+  const privates: {
+    services: Record<string, IServiceWrapper>;
+    ancestor?: IInjector;
+  } = {
+    services: {},
+    ancestor: undefined
   };
-  private ancestor?: IInjector;
 
-  constructor() {
-    this.services = {};
-    this.ancestor = undefined;
-  }
+  const injector: Partial<IInjector> = {};
 
-  inherit(injector?: IInjector): IInjector | undefined {
-    let ancestor = injector;
-    while (ancestor) {
-      if (ancestor === this) {
+  injector.inherit = (another?: IInjector): IInjector | undefined => {
+    let cursor = another;
+    while (cursor) {
+      if (cursor === injector) {
         throw new Error('circular dependency');
       }
-      ancestor = ancestor.inherit();
+      cursor = cursor.inherit();
     }
-    if (injector) {
-      this.ancestor = injector;
+    if (another) {
+      privates.ancestor = another;
     }
-    return this.ancestor;
+    return privates.ancestor;
   }
 
-  provide(name: string, provider: ProviderFn | unknown): void {
+  injector.provide = (name: string, provider: ProviderFn | unknown): void => {
     if (!name || !provider) { return; }
-    if (name in this.services) { return; }
-    this.services[name] = {
+    if (name in privates.services) { return; }
+    privates.services[name] = {
       provider,
       instance: null
     };
   }
 
-  service<S = unknown, P = unknown>(name: string, options?: P): S | undefined {
+  injector.service = <S = unknown, P = unknown>(name: string, options?: P): S | undefined => {
     // 1. find service directly
-    if (name in this.services) {
-      const wrapper = this.services[name];
+    if (name in privates.services) {
+      const wrapper = privates.services[name];
       if (!wrapper.instance) {
         if (typeof wrapper.provider === 'function') {
           wrapper.instance = (wrapper.provider as ProviderFn)({
             ...options,
-            [SymbolInjector]: this
+            [SymbolInjector]: injector as IInjector
           });
         } else {
           wrapper.instance = wrapper.provider;
@@ -81,25 +95,27 @@ export class Injector implements IInjector {
     }
 
     // 2. find service from ancestor injector
-    if (this.ancestor) {
-      return this.ancestor.service(name, options);
+    if (privates.ancestor) {
+      return privates.ancestor.service(name, options);
     }
 
     // 3. service not found
     return undefined;
   }
 
-  dispose(name?: string): void {
+  injector.dispose = (name?: string): void => {
     if (name) {
-      const wrapper = this.services[name];
+      const wrapper = privates.services[name];
       disposeInstance(wrapper.instance);
-      delete this.services[name];
+      delete privates.services[name];
     } else {
-      Object.values(this.services).forEach((wrapper) => {
+      Object.values(privates.services).forEach((wrapper) => {
         disposeInstance(wrapper.instance);      
       });
-      this.services = {};
-      this.ancestor = undefined;
+      privates.services = {};
+      privates.ancestor = undefined;
     }
   }
-}
+
+  return injector as IInjector;
+};

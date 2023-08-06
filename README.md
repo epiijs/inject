@@ -11,7 +11,7 @@ npm i @epiijs/inject --save
 # Usage
 
 ```typescript
-import { Injector } from '@epiijs/inject';
+import { createInjector } from '@epiijs/inject';
 
 function createUserService() {
   return {
@@ -19,7 +19,7 @@ function createUserService() {
   };
 }
 
-const injector = new Injector();
+const injector = createInjector();
 injector.provide('UserService', createUserService);
 
 const service = injector.service('UserService');
@@ -28,12 +28,12 @@ service.dispose();
 
 # API
 
-## Injector()
+## createInjector
 
 ```typescript
-import { Injector } from '@epiijs/inject';
+import { createInjector } from '@epiijs/inject';
 
-const injector = new Injector();
+const injector = createInjector();
 ```
 
 ## injector.provide
@@ -64,9 +64,9 @@ injector.provide('UserService', createUserService);
 ```typescript
 export const userService: IUserService = {};
 
-const globalInjector = new Injector();
-globalInjector.provide('UserService', userService);
-injector.inherit(globalInjector);
+const anotherInjector = createInjector();
+anotherInjector.provide('UserService', userService);
+injector.inherit(anotherInjector);
 
 const service = injector.service('UserService');
 ```
@@ -84,10 +84,10 @@ const service = injector.service('UserService', { region: 'earth' });
 Also you can get injector and call `injector.service` in service provider function.
 
 ```typescript
-import { SymbolInjector } from '@epiijs/inject';
+import { Symbols } from '@epiijs/inject';
 
 injector.provide('PlanService', (options) => {
-  const injector = options[SymbolInjector];
+  const injector = options[Symbols.injector];
   const userService = injector.service('UserService');
   return {};
 });
@@ -98,9 +98,17 @@ injector.provide('PlanService', (options) => {
 `injector.dispose` will dispose specified service or all instances and clear all providers.
 
 ```typescript
+import { Symbols } from '@epiijs/inject';
+
 export const userService: IUserService = {
-  dispose: () => {
+  // you can use Symbols.disposer method to dispose
+  [Symbols.disposer]: () => {
     console.log('disposed');
+  },
+
+  // also you can use 'dispose' method to dispose
+  dispose: () => {
+    console.log('disposed if Symbols.disposer method not defined');
   }
 };
 

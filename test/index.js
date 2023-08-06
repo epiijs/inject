@@ -1,9 +1,9 @@
 const assert = require('assert');
-const { Injector, SymbolInjector } = require('../build');
+const { createInjector, Symbols } = require('../build');
 
 describe('injector', () => {
-  it('new and dispose injector', () => {
-    const injector = new Injector();
+  it('create and dispose injector', () => {
+    const injector = createInjector();
     const service1 = {};
     injector.provide('s1', service1);
     injector.dispose();
@@ -12,7 +12,7 @@ describe('injector', () => {
   });
 
   it('provide nothing', () => {
-    const injector = new Injector();
+    const injector = createInjector();
     const service1 = {};
     injector.provide('', service1);
     injector.provide('s1', '');
@@ -23,7 +23,7 @@ describe('injector', () => {
   });
 
   it('provide simple service', () => {
-    const injector = new Injector();
+    const injector = createInjector();
     const service1 = {};
     injector.provide('s1', service1);
     const instance = injector.service('s1');
@@ -31,7 +31,7 @@ describe('injector', () => {
   });
 
   it('provide more than once', () => {
-    const injector = new Injector();
+    const injector = createInjector();
     const oldValue = '1';
     const newValue = '2';
     injector.provide('s1', oldValue);
@@ -46,7 +46,7 @@ describe('injector', () => {
   });
 
   it('provide callable service', () => {
-    const injector = new Injector();
+    const injector = createInjector();
     const testValue1 = '1';
     const testValue2 = '2';
     const serviceFn = (options) => options?.value || testValue1;
@@ -59,17 +59,17 @@ describe('injector', () => {
   });
 
   it('provide callable service with injector args', () => {
-    const injector = new Injector();
+    const injector = createInjector();
     const testValue1 = '1';
     const testValue2 = '2';
     const serviceFn0 = () => testValue1;
     const serviceFn1 = (options) => {
-      const injector = options[SymbolInjector];
+      const injector = options[Symbols.injector];
       const instance = injector.service('s0');
       return instance;
     };
     const serviceFn2 = (options) => {
-      const injector = options[SymbolInjector];
+      const injector = options[Symbols.injector];
       const instance = injector.service('s1');
       return [instance, options.value];
     };
@@ -83,24 +83,37 @@ describe('injector', () => {
   });
 
   it('dispose service', () => {
-    const injector = new Injector();
-    const disposed = { result: false };
+    const injector = createInjector();
+    const disposed = { s1: false, s2: false };
     const service1 = {
       dispose: () => {
-        disposed.result = true;
+        disposed.s1 = true;
+      }
+    };
+    const service2 = {
+      [Symbols.disposer]: () => {
+        disposed.s2 = true;
+      },
+      dispose: () => {
+        disposed.s2 = false;
       }
     };
     injector.provide('s1', service1);
+    injector.provide('s2', service2);
     injector.service('s1');
+    injector.service('s2');
     injector.dispose();
     const instance1 = injector.service('s1');
+    const instance2 = injector.service('s2');
     assert.deepEqual(instance1, null);
-    assert.deepEqual(disposed.result, true);
+    assert.deepEqual(disposed.s1, true);
+    assert.deepEqual(instance2, null);
+    assert.deepEqual(disposed.s2, true);
   });
 
   it('inherit injector', () => {
-    const injector1 = new Injector();
-    const injector2 = new Injector();
+    const injector1 = createInjector();
+    const injector2 = createInjector();
     const testValue = '1';
     injector2.inherit(injector1);
     injector1.provide('s1', testValue);
@@ -111,8 +124,8 @@ describe('injector', () => {
   });
 
   it('inherit circular injector', () => {
-    const injector1 = new Injector();
-    const injector2 = new Injector();
+    const injector1 = createInjector();
+    const injector2 = createInjector();
     assert.throws(() => {
       injector1.inherit(injector1);
     })
