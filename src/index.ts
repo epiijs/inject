@@ -1,5 +1,5 @@
-const SymbolInjector = Symbol('injector');
-const SymbolDisposer = Symbol('disposer');
+const SymbolInjector: unique symbol = Symbol('injector');
+const SymbolDisposer: unique symbol = Symbol('disposer');
 
 export const Symbols = new Proxy({}, {
   get: (target, key) => {
@@ -11,8 +11,8 @@ export const Symbols = new Proxy({}, {
     }
   }
 }) as {
-  readonly injector: symbol;
-  readonly disposer: symbol;
+  readonly injector: unique symbol;
+  readonly disposer: unique symbol;
 };
 
 export type ProviderFn = (options: {
