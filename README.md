@@ -65,9 +65,9 @@ injector.provide('UserService', createUserService);
 
 ```typescript
 const injector = createInjector();
+
 const anotherInjector = createInjector();
 anotherInjector.provide('UserService', {});
-
 injector.inherit(anotherInjector);
 
 const service = injector.service('UserService');
@@ -76,21 +76,16 @@ const service = injector.service('UserService');
 ## injector.service
 
 `injector.service` can find service by name, create service instance and return it.
-You can specify options for service factory function.
 
 ```typescript
 const service = injector.service('UserService');
-const service = injector.service('UserService', { region: 'earth' });
 ```
 
-Also you can get injector and call `injector.service` in service factory function.
+Also you can use the first argument of service factory function as service locator to find other services.
 
 ```typescript
-import { Symbols } from '@epiijs/inject';
-
-injector.provide('PlanService', (options) => {
-  const injector = options[Symbols.injector];
-  const userService = injector.service('UserService');
+injector.provide('PlanService', (services) => {
+  const userService = service.UserService;
   return { user: userService, plan: undefined };
 });
 ```
@@ -100,17 +95,15 @@ injector.provide('PlanService', (options) => {
 `injector.dispose` will dispose specified service by name or all instances and clear all providers.
 
 ```typescript
-import { Symbols } from '@epiijs/inject';
-
 export const userService: IUserService = {
-  // you can use Symbols.disposer method to dispose
-  [Symbols.disposer]: () => {
-    console.log('disposed');
-  },
+  // you can use Symbol.dispose method to dispose
+  // [Symbol.dispose]: () => {
+  //   console.log('disposed');
+  // },
 
   // also you can use 'dispose' method to dispose
   dispose: () => {
-    console.log('disposed if Symbols.disposer method not defined');
+    console.log('disposed if Symbol.dispose method not defined');
   }
 };
 

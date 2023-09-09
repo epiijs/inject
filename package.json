@@ -1,6 +1,6 @@
 {
   "name": "@epiijs/inject",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "A dependency injector.",
   "main": "build/index.js",
   "scripts": {

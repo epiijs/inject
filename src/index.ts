@@ -1,58 +1,41 @@
-const SymbolInjector: unique symbol = Symbol('injector');
-const SymbolDisposer: unique symbol = Symbol('disposer');
-
-export const Symbols = new Proxy({}, {
-  get: (target, key) => {
-    if (key === 'injector') {
-      return SymbolInjector;
-    }
-    if (key === 'disposer') {
-      return SymbolDisposer;
-    }
-  }
-}) as {
-  readonly injector: unique symbol;
-  readonly disposer: unique symbol;
+export type ServiceLocator = {
+  [key in string]?: unknown;
 };
 
-export type ProviderFn = (options: {
-  [key: string]: unknown;
-  [SymbolInjector]: IInjector;
-}) => unknown;
+export type ServiceFactoryFn = (services: ServiceLocator) => unknown;
 
 export interface IInjector {
   inherit: (injector?: IInjector) => IInjector | undefined;
-  provide: (name: string, provider: ProviderFn | unknown) => void;
-  service: <S = unknown, P = unknown>(name: string, options?: P) => S | undefined;
+  provide: (name: string, service: ServiceFactoryFn | unknown) => void;
+  service: (name?: string) => ServiceLocator | unknown | undefined;
   dispose: (name?: string) => void;
 }
 
 interface IServiceWrapper {
-  provider: unknown;
+  original: unknown;
   instance: unknown;
-}
-
-function disposeInstance(instance: unknown) {
-  if (!instance) { return; }
-  // TODO: support Symbol.dispose while ECMA updated
-  const disposeFn =
-    (instance as any)[SymbolDisposer] ||
-    (instance as any).dispose;
-  if (typeof disposeFn === 'function') {
-    try { disposeFn(); } catch {}
-  }
+  invoking: boolean;
 }
 
 export function createInjector(): IInjector {
   const privates: {
-    services: Record<string, IServiceWrapper>;
     ancestor?: IInjector;
+    services: Record<string, IServiceWrapper>;
   } = {
+    ancestor: undefined,
     services: {},
-    ancestor: undefined
   };
 
   const injector: Partial<IInjector> = {};
+
+  const serviceLocator = new Proxy({}, {
+    get: (_, name) => {
+      if (typeof name === 'string') {
+        return (injector as IInjector).service(name);
+      }
+      return undefined;
+    }
+  });
 
   injector.inherit = (another?: IInjector): IInjector | undefined => {
     let cursor = another;
@@ -68,39 +51,54 @@ export function createInjector(): IInjector {
     return privates.ancestor;
   }
 
-  injector.provide = (name: string, provider: ProviderFn | unknown): void => {
-    if (!name || !provider) { return; }
+  injector.provide = (name: string, service: ServiceFactoryFn | unknown): void => {
+    if (!name || !service) { return; }
     if (name in privates.services) { return; }
     privates.services[name] = {
-      provider,
-      instance: null
+      original: service,
+      instance: undefined,
+      invoking: false
+      // TODO: support record evaluate performance
     };
   }
 
-  injector.service = <S = unknown, P = unknown>(name: string, options?: P): S | undefined => {
+  injector.service = (name?: string): ServiceLocator | unknown | undefined => {
+    // 0. return service locator
+    if (!name && typeof name !== 'string') {
+      return serviceLocator;
+    }
+
     // 1. find service directly
     if (name in privates.services) {
       const wrapper = privates.services[name];
-      if (!wrapper.instance) {
-        if (typeof wrapper.provider === 'function') {
-          wrapper.instance = (wrapper.provider as ProviderFn)({
-            ...options,
-            [SymbolInjector]: injector as IInjector
-          });
-        } else {
-          wrapper.instance = wrapper.provider;
-        }
+      if (!wrapper.instance && !wrapper.invoking) {
+        wrapper.invoking = true;
+        wrapper.instance = typeof wrapper.original === 'function'
+          ? (wrapper.original as ServiceFactoryFn)(serviceLocator)
+          : wrapper.original;
+        wrapper.invoking = false;
       }
-      return wrapper.instance as S | undefined;
+      return wrapper.instance;
     }
 
     // 2. find service from ancestor injector
     if (privates.ancestor) {
-      return privates.ancestor.service(name, options);
+      return privates.ancestor.service(name);
     }
 
     // 3. service not found
     return undefined;
+  }
+
+  function disposeInstance(instance: unknown) {
+    if (!instance) { return; }
+    const disposeFn =
+      // TODO: support Symbol.dispose while ECMA updated
+      // (instance as any)[Symbol.dispose] ||
+      (instance as any).dispose;
+    if (typeof disposeFn === 'function') {
+      try { disposeFn(); } catch {}
+    }
   }
 
   injector.dispose = (name?: string): void => {
