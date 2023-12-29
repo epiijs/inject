@@ -1,5 +1,5 @@
-const assert = require('assert');
-const { createInjector, Symbols } = require('../build');
+import assert from 'assert';
+import { createInjector } from '../build/index.js';
 
 describe('injector', () => {
   it('create and dispose injector', () => {

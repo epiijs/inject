@@ -1,13 +1,13 @@
 {
   "name": "@epiijs/inject",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "A dependency injector.",
   "main": "build/index.js",
+  "type": "module",
   "scripts": {
     "clean": "rm -rf build && rm -rf coverage && rm -rf .nyc_output",
-    "build": "npm run clean && tsc",
-    "lint": "eslint --ext .ts",
-    "test": "eslint --ext .ts && npm run build && nyc --reporter=lcov mocha test/index.js --exit",
+    "build": "npm run clean && eslint --ext .ts && tsc",
+    "test": "npm run build && nyc --reporter=lcov mocha test/index.js --exit",
     "lcov": "nyc report --reporter=text-lcov | coveralls"
   },
   "repository": {
@@ -15,7 +15,8 @@
     "url": "git+https://github.com/epiijs/inject.git"
   },
   "keywords": [
-    "epii"
+    "epiijs",
+    "inject"
   ],
   "author": "Sartrey Lee <sartrey@163.com> (https://sartrey.cn)",
   "license": "MIT",
@@ -25,9 +26,8 @@
   "homepage": "https://github.com/epiijs/inject#readme",
   "devDependencies": {
     "@epiijs/eslint-config": "^0.1.4",
-    "@tsconfig/node18": "^18.2.0",
-    "@types/node": "^20.4.8",
-    "eslint": "^8.46.0",
+    "@types/node": "^20.10.5",
+    "eslint": "^8.56.0",
     "mocha": "^10.2.0",
     "nyc": "^15.1.0"
   }

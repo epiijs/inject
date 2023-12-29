@@ -1,7 +1,5 @@
-src
-test
-.eslintignore
-.eslintrc.json
-tsconfig.json
 .nyc_output
 coverage
+src
+test
+tsconfig.json

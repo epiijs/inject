@@ -1,4 +1,4 @@
-# epii-inject
+# @epiijs/inject
 
 A simple dependency injector.
 
