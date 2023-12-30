@@ -1,9 +1,10 @@
 {
   "name": "@epiijs/inject",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A dependency injector.",
-  "main": "build/index.js",
   "type": "module",
+  "main": "build/index.js",
+  "exports": "./build/index.js",
   "scripts": {
     "clean": "rm -rf build && rm -rf coverage && rm -rf .nyc_output",
     "build": "npm run clean && eslint --ext .ts && tsc",
@@ -26,7 +27,7 @@
   "homepage": "https://github.com/epiijs/inject#readme",
   "devDependencies": {
     "@epiijs/eslint-config": "^0.1.4",
-    "@types/node": "^20.10.5",
+    "@types/node": "^20.10.6",
     "eslint": "^8.56.0",
     "mocha": "^10.2.0",
     "nyc": "^15.1.0"

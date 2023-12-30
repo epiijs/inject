@@ -90,6 +90,8 @@ injector.provide('PlanService', (services) => {
 });
 ```
 
+Actually `injector.serivce()` will return a service locator proxy.
+
 ## injector.dispose
 
 `injector.dispose` will dispose specified service by name or all instances and clear all providers.
