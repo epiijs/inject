@@ -1,13 +1,13 @@
 {
   "name": "@epiijs/inject",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "A dependency injector.",
   "type": "module",
   "main": "build/index.js",
   "exports": "./build/index.js",
   "scripts": {
     "clean": "rm -rf build && rm -rf coverage && rm -rf .nyc_output",
-    "build": "npm run clean && eslint --ext .ts && tsc",
+    "build": "npm run clean && eslint . && tsc",
     "test": "npm run build && nyc --reporter=lcov mocha test/index.js --exit",
     "lcov": "nyc report --reporter=text-lcov | coveralls"
   },
@@ -26,10 +26,10 @@
   },
   "homepage": "https://github.com/epiijs/inject#readme",
   "devDependencies": {
-    "@epiijs/eslint-config": "^0.1.4",
-    "@types/node": "^20.10.6",
-    "eslint": "^8.56.0",
-    "mocha": "^10.2.0",
-    "nyc": "^15.1.0"
+    "@epiijs/eslint-config": "^1.0.0",
+    "@types/node": "^20.17.19",
+    "eslint": "^9.20.1",
+    "mocha": "^11.1.0",
+    "nyc": "^17.1.0"
   }
 }

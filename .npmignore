@@ -3,3 +3,4 @@ coverage
 src
 test
 tsconfig.json
+eslint.config.mjs

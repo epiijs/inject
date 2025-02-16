@@ -12,7 +12,7 @@ export interface IInjector {
 }
 
 interface IServiceWrapper {
-  original: unknown;
+  original: ServiceFactoryFn | unknown;
   instance: unknown;
   invoking: boolean;
 }
@@ -23,7 +23,7 @@ export function createInjector(): IInjector {
     services: Record<string, IServiceWrapper>;
   } = {
     ancestor: undefined,
-    services: {},
+    services: {}
   };
 
   const injector: Partial<IInjector> = {};
@@ -49,7 +49,7 @@ export function createInjector(): IInjector {
       privates.ancestor = another;
     }
     return privates.ancestor;
-  }
+  };
 
   injector.provide = (name: string, service: ServiceFactoryFn | unknown): void => {
     if (!name || !service) { return; }
@@ -60,8 +60,9 @@ export function createInjector(): IInjector {
       invoking: false
       // TODO: support record evaluate performance
     };
-  }
+  };
 
+  // TODO: <T extends keyof Services>(name?: T) => Services[T]
   injector.service = (name?: string): ServiceLocator | unknown | undefined => {
     // 0. return service locator
     if (!name && typeof name !== 'string') {
@@ -88,15 +89,15 @@ export function createInjector(): IInjector {
 
     // 3. service not found
     return undefined;
-  }
+  };
 
-  function disposeInstance(instance: unknown) {
+  function disposeInstance(instance: unknown): void {
     if (!instance) { return; }
     const disposeFn =
-      // TODO: support Symbol.dispose while ECMA updated
-      // (instance as any)[Symbol.dispose] ||
+      (instance as any)[Symbol.dispose] ||
       (instance as any).dispose;
     if (typeof disposeFn === 'function') {
+      // eslint-disable-next-line no-empty
       try { disposeFn(); } catch {}
     }
   }
@@ -113,7 +114,7 @@ export function createInjector(): IInjector {
       privates.services = {};
       privates.ancestor = undefined;
     }
-  }
+  };
 
   return injector as IInjector;
 };

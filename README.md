@@ -99,9 +99,9 @@ Actually `injector.serivce()` will return a service locator proxy.
 ```typescript
 export const userService: IUserService = {
   // you can use Symbol.dispose method to dispose
-  // [Symbol.dispose]: () => {
-  //   console.log('disposed');
-  // },
+  [Symbol.dispose]: () => {
+    console.log('disposed');
+  },
 
   // also you can use 'dispose' method to dispose
   dispose: () => {
