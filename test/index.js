@@ -1,4 +1,5 @@
 import assert from 'assert';
+
 import { createInjector } from '../build/index.js';
 
 describe('injector', () => {
