@@ -116,3 +116,7 @@ injector.dispose();
 
 // console output: disposed
 ```
+
+# Trying
+
+- [ ] Support discovering Service instances by matching input type information, similar to dotnet's dependency injection. (This may not be achievable within the current capabilities of TypeScript.)
