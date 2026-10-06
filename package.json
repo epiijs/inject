@@ -1,15 +1,21 @@
 {
   "name": "@epiijs/inject",
-  "version": "0.9.1",
+  "version": "1.0.0",
   "description": "A dependency injector.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "type": "module",
   "main": "build/index.js",
   "exports": "./build/index.js",
+  "files": [
+    "build"
+  ],
   "scripts": {
     "clean": "rm -rf build && rm -rf coverage",
-    "build": "npm run clean && eslint . && tsc",
-    "test": "npm run build && vitest run",
-    "test:coverage": "npm run build && vitest run --coverage"
+    "build": "npm run clean && tsc",
+    "lint": "eslint .",
+    "test": "npm run build && vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -26,10 +32,11 @@
   },
   "homepage": "https://github.com/epiijs/inject#readme",
   "devDependencies": {
-    "@epiijs/eslint-config": "^1.1.0",
-    "@types/node": "^20.17.32",
+    "@epiijs/eslint-config": "^1.2.0",
+    "@types/node": "^24.13.6",
     "@vitest/coverage-v8": "^3.2.6",
     "eslint": "^9.25.1",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.6"
   }
 }

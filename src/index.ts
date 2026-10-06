@@ -1,13 +1,17 @@
-export type ServiceLocator = {
-  [key in string]?: unknown;
-};
+export interface IServiceLocator {
+  [key: string]: unknown;
+}
 
-export type ServiceFactoryFn = (services: ServiceLocator) => unknown;
+/** @deprecated 改用 {@link IServiceLocator} */
+export type ServiceLocator = IServiceLocator;
+
+export type ServiceFactoryFn = (services: IServiceLocator) => unknown;
 
 export interface IInjector {
   inherit: (injector?: IInjector) => IInjector | undefined;
   provide: (name: string, service: ServiceFactoryFn | unknown) => void;
-  service: (name?: string) => ServiceLocator | unknown | undefined;
+  service<K extends string>(name: K): IServiceLocator[K];
+  service(): IServiceLocator;
   dispose: (name?: string) => void;
 }
 
@@ -52,8 +56,12 @@ export function createInjector(): IInjector {
   };
 
   injector.provide = (name: string, service: ServiceFactoryFn | unknown): void => {
-    if (!name || !service) { return; }
-    if (name in privates.services) { return; }
+    if (!name || !service) {
+      return;
+    }
+    if (name in privates.services) {
+      return;
+    }
     privates.services[name] = {
       original: service,
       instance: undefined,
@@ -62,22 +70,30 @@ export function createInjector(): IInjector {
     };
   };
 
-  // TODO: <T extends keyof Services>(name?: T) => Services[T]
-  injector.service = (name?: string): ServiceLocator | unknown | undefined => {
+  function service<K extends string>(name: K): IServiceLocator[K];
+  function service(): IServiceLocator;
+  function service(name?: string): IServiceLocator | unknown {
     // 0. return service locator
-    if (!name && typeof name !== 'string') {
+    if (name === undefined) {
       return serviceLocator;
     }
 
     // 1. find service directly
     if (name in privates.services) {
       const wrapper = privates.services[name];
-      if (!wrapper.instance && !wrapper.invoking) {
+      if (wrapper.invoking) {
+        throw new Error(`circular dependency on "${name}"`);
+      }
+      if (!wrapper.instance) {
         wrapper.invoking = true;
-        wrapper.instance = typeof wrapper.original === 'function'
-          ? (wrapper.original as ServiceFactoryFn)(serviceLocator)
-          : wrapper.original;
-        wrapper.invoking = false;
+        try {
+          wrapper.instance = typeof wrapper.original === 'function'
+            ? (wrapper.original as ServiceFactoryFn)(serviceLocator)
+            : wrapper.original;
+        } finally {
+          // 复位后求值失败的服务可以重试
+          wrapper.invoking = false;
+        }
       }
       return wrapper.instance;
     }
@@ -88,28 +104,40 @@ export function createInjector(): IInjector {
     }
 
     // 3. service not found
-    return undefined;
-  };
+    throw new Error(`service "${name}" not found`);
+  }
+  injector.service = service;
 
   function disposeInstance(instance: unknown): void {
-    if (!instance) { return; }
-    const disposeFn =
-      (instance as any)[Symbol.dispose] ||
-      (instance as any).dispose;
+    if (!instance) {
+      return;
+    }
+    const disposable = instance as {
+      [Symbol.dispose]?: () => void;
+      dispose?: () => void;
+    };
+    const disposeFn = disposable[Symbol.dispose] ?? disposable.dispose;
     if (typeof disposeFn === 'function') {
-      // eslint-disable-next-line no-empty
-      try { disposeFn(); } catch {}
+      try {
+        // 以实例为接收者调用，依赖 this 的销毁实现才有效
+        disposeFn.call(instance);
+      } catch {
+        // dispose failure is ignored
+      }
     }
   }
 
   injector.dispose = (name?: string): void => {
-    if (name) {
+    if (name !== undefined) {
+      if (!(name in privates.services)) {
+        return;
+      }
       const wrapper = privates.services[name];
       disposeInstance(wrapper.instance);
       delete privates.services[name];
     } else {
       Object.values(privates.services).forEach((wrapper) => {
-        disposeInstance(wrapper.instance);      
+        disposeInstance(wrapper.instance);
       });
       privates.services = {};
       privates.ancestor = undefined;

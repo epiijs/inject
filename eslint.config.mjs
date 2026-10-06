@@ -4,9 +4,10 @@ export default [
   {
     ignores: [
       'eslint.config.mjs',
-      'tsconfig.json',
+      'vitest.config.ts',
       'test/',
       'build/',
+      'coverage/',
       'node_modules/'
     ]
   },
