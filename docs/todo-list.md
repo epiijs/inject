@@ -20,11 +20,10 @@ last_updated: 2026-10-07
 
 ## 待办
 
-> **统计**：已完成 10 / 总计 12（计全文档全部 checkbox，不含外部协同节，已完成节计入终态条目）
+> **统计**：已完成 11 / 总计 12（计全文档全部 checkbox，不含外部协同节，已完成节计入终态条目）
 
 已知缺陷的现状固化在 `test/index.test.js`（用例名带 `current behavior`），修复须经人工 Review，修复后同步改写断言。目标语义见 `docs/design-v1.md`「服务生命周期」与「容器作用域」。
 
-- [ ] 假值实例无法直接注册：`provide(name, service)` 对 `service` 用真值判断，`provide('x', 0)` / `''` / `false` 静默不登记，与 `docs/design-v1.md`「传入非函数值视为实例本身」矛盾。现状按 2026-10-06 人工 Review 保持，待定的是口径：改文档承认这一限制，还是放开注册（等待方：人工 Review）
 - [ ] 发布 1.0.0：`package.json` 版本号已定为 `1.0.0`，属破坏性变更（查询未命中与依赖成环改为抛错、`service()` 与 `dispose()` 按参数缺省判断、`service(name)` 返回类型按声明推导、旧名 `ServiceLocator` 转 deprecated 别名）。`engines` 收紧 Node ≥24 对使用方同样是约束。npm 发布归人工（等待方：人工 Review）
 
 ## 已完成
@@ -49,3 +48,5 @@ last_updated: 2026-10-07
 - [x] 类型化落地：`IServiceLocator` 作声明合并落点，`service(name)` 返回按声明推导的类型，旧名转 `@deprecated` 别名；销毁句柄以实例为接收者调用，本仓 lint 归零
 - [x] 测试与文档同步：用例 24 项通过、`build/` 全覆盖，README 补声明合并用法与抛错口径
 - [x] 假值实例不缓存定为不修：不存在需要缓存假值的工厂产物，口径记 `docs/design-v1.md`，用例继续固化现状
+- [x] README 双语化并对齐 httply 惯例（中文主文档 + `README.en.md` 英文镜像，互链），按实现订正对外 API 描述：`IServiceLocator` 单列作声明合并落点，补销毁仅作用于已实例化的服务、同名重复注册跳过、`inherit()` 的双形态与 `dispose()` 断开继承；示例逐条实测
+- [x] 假值实例不登记定为不修：2026-10-07 人工 Review 定口径为文档承认限制，README 写明 `name` 与 `service` 的假值都静默忽略
